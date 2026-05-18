@@ -8,12 +8,11 @@ POLL_INTERVAL_SECONDS = 5
 REPORT_SEND_INTERVAL_HOURS = 4
 
 # Qaysi report turlari avtomatik yuboriladir
-# Mumkin qiymatlar: "daily", "weekly", "monthly"
 AUTO_REPORT_TYPES = ["daily", "weekly", "monthly"]
 
 EXTERNAL_REPORT_API_URL = "https://your-logistics-api.com/api/v1/reports"
 EXTERNAL_API_KEY        = "YOUR_API_KEY_HERE"
-EXTERNAL_API_TIMEOUT    = 30  # soniya
+EXTERNAL_API_TIMEOUT    = 30
 
 DB_PATH = "ifta.db"
 
