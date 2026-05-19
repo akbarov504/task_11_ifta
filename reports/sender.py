@@ -5,10 +5,10 @@ import requests
 
 from settings import (
     EXTERNAL_REPORT_API_URL,
-    EXTERNAL_API_KEY,
     EXTERNAL_API_TIMEOUT,
 )
 from utils.database import db_cursor
+from utils.token_manager import get_valid_token
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +25,10 @@ def save_report(report: dict, period_type: str,
         return cur.lastrowid
 
 def send_to_external(report: dict, report_id: int) -> bool:
+    token = get_valid_token()
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {EXTERNAL_API_KEY}",
+        "Authorization": f"Bearer {token}",
     }
     try:
         resp = requests.post(
