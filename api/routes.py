@@ -129,7 +129,7 @@ def get_report_history():
 def _unix_to_iso(ts) -> str | None:
     if ts is None:
         return None
-    return datetime.fromtimestamp(float(ts), tz=timezone.utc).isoformat()
+    return datetime.fromtimestamp(float(ts), tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def run_api():
     """Flask serverni ishga tushiradi (blocking)."""

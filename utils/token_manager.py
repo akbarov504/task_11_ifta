@@ -2,7 +2,7 @@ import os
 import json
 import fcntl
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from core.config import TOKEN_FILE_PATH, API_BASE_STREAM, TOKEN_REFRESH_MARGIN
 from typing import Optional
 
@@ -47,7 +47,7 @@ def save_token_info(token: str, expires_at: str, truck_id: int):
         "token": token,
         "truck_id": truck_id,
         "expires_at": expires_at,
-        "updated_at": datetime.now().isoformat() + "Z",
+        "updated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     safe_write_json(TOKEN_FILE_PATH, data)
     print(f"[TOKEN_MANAGER] Token saved. Expires at: {expires_at}")

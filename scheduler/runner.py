@@ -1,26 +1,20 @@
 """
 ifta/scheduler/runner.py
 
-Ikkita parallel scheduler ishlaydi:
+Ikkita parallel scheduler:
 
-1. INTERVAL SCHEDULER — har REPORT_SEND_INTERVAL_HOURS soatda report
-   yaratib DB ga saqlaydi va external API ga yuboradi.
+1. INTERVAL SCHEDULER — har REPORT_SEND_INTERVAL_HOURS soatda report yuboradi.
 
-2. DAY-END SCHEDULER — har kuni 23:59:59 da "daily closing" report
-   yuboradi. Bu shu kunning boshidan (00:00:00) 23:59:59 gacha
-   bo'lgan to'liq kunni qamrab oladi.
+2. DAY-END SCHEDULER — har kuni UTC 23:59:59 da "daily closing" report yuboradi.
+   Bu shu UTC kunning 00:00:00 → 23:59:59 oralig'ini qamrab oladi.
 
-Sabab: agar interval 4 soat bo'lsa va 22:00 da report ketsa,
-keyingisi ertangi 02:00 da ketadi — bu holda bugungi kun
-hech qachon yakunlanmay qoladi. Day-end scheduler shu muammoni
-hal qiladi: 23:59:59 da albatta shu kunning yakuniy reporti
-yuboriladi.
+MUHIM: Barcha vaqt hisoblari UTC da. date.today() ISHLATILMAYDI.
 """
 
 import time
 import logging
 import threading
-from datetime import datetime, timezone, date, timedelta
+from datetime import datetime, timezone, timedelta
 
 from settings import (
     REPORT_SEND_INTERVAL_HOURS,
@@ -34,29 +28,36 @@ logger = logging.getLogger(__name__)
 _stop_event = threading.Event()
 
 
-# ── Yordamchi ────────────────────────────────────────────────
+# ── UTC yordamchi funksiyalar ────────────────────────────────
 
-def _today_start_end() -> tuple[float, float]:
-    """Bugungi kunning 00:00:00 va 23:59:59 (UTC) Unix timestamp lari."""
-    today = date.today()
-    start = datetime(today.year, today.month, today.day,
-                     0, 0, 0, tzinfo=timezone.utc).timestamp()
-    end   = datetime(today.year, today.month, today.day,
-                     23, 59, 59, tzinfo=timezone.utc).timestamp()
-    return start, end
+def _utc_now() -> datetime:
+    """Hozirgi UTC datetime."""
+    return datetime.now(timezone.utc)
 
 
-def _seconds_until_midnight() -> float:
-    """Bugungi 23:59:59 UTC ga qancha soniya qolgan."""
-    now   = time.time()
-    today = date.today()
-    eod   = datetime(today.year, today.month, today.day,
-                     23, 59, 59, tzinfo=timezone.utc).timestamp()
-    diff  = eod - now
-    # Agar allaqachon o'tgan bo'lsa (masalan server aynan 23:59:59 da ishga tushdi)
-    # ertangi kunga o'tkazamiz
+def _today_utc_start_end() -> tuple[float, float]:
+    """
+    UTC bo'yicha bugungi kunning boshlanishi va oxiri (Unix timestamp).
+    00:00:00 UTC → 23:59:59 UTC
+    """
+    now   = _utc_now()
+    start = now.replace(hour=0,  minute=0,  second=0,  microsecond=0)
+    end   = now.replace(hour=23, minute=59, second=59, microsecond=0)
+    return start.timestamp(), end.timestamp()
+
+
+def _seconds_until_utc_eod() -> float:
+    """
+    Bugungi UTC 23:59:59 ga qancha soniya qolgan.
+    Agar o'tib ketgan bo'lsa — ertangi UTC 23:59:59 gacha.
+    """
+    now = _utc_now()
+    eod = now.replace(hour=23, minute=59, second=59, microsecond=0)
+    diff = (eod - now).total_seconds()
     if diff <= 0:
-        diff += 86400
+        # O'tib ketgan — ertangi eod
+        eod  = eod + timedelta(days=1)
+        diff = (eod - now).total_seconds()
     return diff
 
 
@@ -71,7 +72,9 @@ def _run_interval_cycle():
             start_ts, end_ts = _period_bounds(period_type)
             report    = build_report(period_type)
             report_id = save_report(report, period_type, start_ts, end_ts)
-            logger.info("Interval: saved %s report #%d", period_type, report_id)
+            logger.info("Interval: saved %s report #%d  UTC=%s",
+                        period_type, report_id,
+                        _utc_now().strftime("%Y-%m-%dT%H:%M:%SZ"))
             send_to_external(report, report_id)
         except Exception:
             logger.exception("Interval error for period_type=%s", period_type)
@@ -93,42 +96,40 @@ def interval_loop():
 
 def _run_day_end_cycle():
     """
-    Bugungi kunning 00:00:00 → 23:59:59 oralig'idagi daily report.
-    Bu kun bo'yi yig'ilgan barcha telemetriyani qamrab oladi.
+    UTC bugungi kunning 00:00:00 → 23:59:59 oralig'idagi daily closing report.
     """
+    start_ts, end_ts = _today_utc_start_end()
+    utc_str = _utc_now().strftime("%Y-%m-%dT%H:%M:%SZ")
+
     try:
-        start_ts, end_ts = _today_start_end()
         report    = build_report("daily",
                                  custom_start=start_ts,
                                  custom_end=end_ts)
         report_id = save_report(report, "daily", start_ts, end_ts)
-        logger.info("Day-end closing report saved #%d  (%.0f→%.0f)",
-                    report_id, start_ts, end_ts)
+        logger.info("Day-end closing report #%d saved  UTC=%s  range=[%.0f → %.0f]",
+                    report_id, utc_str, start_ts, end_ts)
         send_to_external(report, report_id)
     except Exception:
-        logger.exception("Day-end report error")
+        logger.exception("Day-end report error at UTC=%s", utc_str)
 
 
 def day_end_loop():
-    """
-    Har kuni 23:59:59 da bir marta daily closing report yuboradi.
-    Keyin ertangi 23:59:59 gacha kutadi.
-    """
-    logger.info("Day-end scheduler started")
+    """Har kuni UTC 23:59:59 da bir marta daily closing report yuboradi."""
+    logger.info("Day-end scheduler started (fires at UTC 23:59:59 daily)")
 
     while not _stop_event.is_set():
-        wait_sec = _seconds_until_midnight()
-        logger.info("Day-end: next closing report in %.0f seconds (%.1f hours)",
-                    wait_sec, wait_sec / 3600)
+        wait_sec = _seconds_until_utc_eod()
+        logger.info("Day-end: next closing report in %.0fs (%.2fh)  UTC=%s",
+                    wait_sec, wait_sec / 3600,
+                    _utc_now().strftime("%Y-%m-%dT%H:%M:%SZ"))
 
-        # Kutamiz — to'xtatish signali kelsa chiqamiz
         _stop_event.wait(wait_sec)
         if _stop_event.is_set():
             break
 
         _run_day_end_cycle()
 
-        # Bir soniya kutamiz (23:59:59 → 00:00:00 o'tib ketmasligi uchun)
+        # 1 soniya — 23:59:59 → 00:00:00 o'tib ketmasligi uchun
         _stop_event.wait(1)
 
     logger.info("Day-end scheduler stopped")
@@ -137,17 +138,13 @@ def day_end_loop():
 # ── Public API ───────────────────────────────────────────────
 
 def start() -> list[threading.Thread]:
-    """Ikkala schedulerni background thread da ishga tushiradi."""
     _stop_event.clear()
-
     t1 = threading.Thread(target=interval_loop, name="IntervalScheduler", daemon=True)
     t2 = threading.Thread(target=day_end_loop,  name="DayEndScheduler",   daemon=True)
     t1.start()
     t2.start()
-
     return [t1, t2]
 
 
 def stop():
-    """Ikkala schedulerni to'xtatish."""
     _stop_event.set()
