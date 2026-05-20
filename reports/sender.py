@@ -58,6 +58,7 @@ def retry_unsent():
     logger.info("Retrying %d unsent report(s)", len(rows))
     for row in rows:
         report = json.loads(row["payload"])
+        print(report)
         send_to_external(report, row["id"])
 
 def _mark_sent(report_id: int):
