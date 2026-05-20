@@ -50,6 +50,8 @@ def send_to_external(report: dict, report_id: int) -> bool:
             timeout=EXTERNAL_API_TIMEOUT,
         )
         resp.raise_for_status()
+        print(resp.json())
+        print(resp.text)
         _mark_sent(report_id)
         logger.info("Report #%d sent to external API (status=%d)", report_id, resp.status_code)
         return True
