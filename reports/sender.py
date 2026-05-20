@@ -62,7 +62,7 @@ def retry_unsent():
     """Yuborib bo'lmaganlarni qayta urinadi."""
     with db_cursor() as cur:
         cur.execute("""
-            SELECT id, payload FROM reports WHERE sent = 0 ORDER BY created_at ASC
+            SELECT id, payload FROM reports WHERE sent = 0 and period_type = 'daily' ORDER BY created_at ASC
         """)
         rows = cur.fetchall()
 
