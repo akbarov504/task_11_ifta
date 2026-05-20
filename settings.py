@@ -5,7 +5,7 @@ GPS_API_URL = "http://127.0.0.1:5000/api/info/gps"
 POLL_INTERVAL_SECONDS = 5
 
 # Har necha soatda report yaratib external API ga yuboriladi
-REPORT_SEND_INTERVAL_HOURS = 4
+REPORT_SEND_INTERVAL_HOURS = 1
 
 # Qaysi report turlari avtomatik yuboriladir
 AUTO_REPORT_TYPES = ["daily", "weekly", "monthly"]
