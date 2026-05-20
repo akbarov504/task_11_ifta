@@ -41,6 +41,7 @@ def send_to_external(report: dict, report_id: int) -> bool:
         "summary": report["summary"],
         "states":  report["states"],
     }
+    print("BODY - ", body)
 
     try:
         resp = requests.post(
