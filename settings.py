@@ -17,7 +17,7 @@ DB_PATH = "ifta.db"
 
 APP_HOST = "0.0.0.0"
 APP_PORT = 8080
-DEBUG    = False
+DEBUG    = True
 
 LOG_LEVEL = "INFO"
 LOG_FILE  = "ifta.log"
