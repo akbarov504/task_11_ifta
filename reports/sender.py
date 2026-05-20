@@ -45,7 +45,7 @@ def send_to_external(report: dict, report_id: int) -> bool:
     try:
         resp = requests.post(
             EXTERNAL_REPORT_API_URL,
-            json=body,
+            json=json.dumps(body),
             headers=headers,
             timeout=EXTERNAL_API_TIMEOUT,
         )
