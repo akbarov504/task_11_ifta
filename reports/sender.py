@@ -12,9 +12,10 @@ from utils.token_manager import get_valid_token
 
 logger = logging.getLogger(__name__)
 
+
 def save_report(report: dict, period_type: str,
                 period_start: float, period_end: float) -> int:
-
+    """To'liq reportni (meta+current_status+summary+states) DB ga saqlaydi."""
     payload = json.dumps(report, ensure_ascii=False)
     with db_cursor() as cur:
         cur.execute("""
@@ -24,16 +25,27 @@ def save_report(report: dict, period_type: str,
         """, (time.time(), period_type, period_start, period_end, payload))
         return cur.lastrowid
 
+
 def send_to_external(report: dict, report_id: int) -> bool:
+    """
+    External logistika API ga yuboradi.
+    Body: faqat { summary, states } — meta va current_status yuborilmaydi.
+    """
     token = get_valid_token()
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
     }
+
+    body = {
+        "summary": report["summary"],
+        "states":  report["states"],
+    }
+
     try:
         resp = requests.post(
             EXTERNAL_REPORT_API_URL,
-            json=report,
+            json=body,
             headers=headers,
             timeout=EXTERNAL_API_TIMEOUT,
         )
@@ -45,7 +57,9 @@ def send_to_external(report: dict, report_id: int) -> bool:
         logger.error("Failed to send report #%d: %s", report_id, exc)
         return False
 
+
 def retry_unsent():
+    """Yuborib bo'lmaganlarni qayta urinadi."""
     with db_cursor() as cur:
         cur.execute("""
             SELECT id, payload FROM reports WHERE sent = 0 ORDER BY created_at ASC
@@ -58,8 +72,8 @@ def retry_unsent():
     logger.info("Retrying %d unsent report(s)", len(rows))
     for row in rows:
         report = json.loads(row["payload"])
-        print(report)
         send_to_external(report, row["id"])
+
 
 def _mark_sent(report_id: int):
     with db_cursor() as cur:
