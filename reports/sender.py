@@ -42,10 +42,11 @@ def send_to_external(report: dict, report_id: int) -> bool:
         "states":  report["states"],
     }
     print("BODY - ", body)
+    body = json.dumps(body)
     try:
         resp = requests.post(
             EXTERNAL_REPORT_API_URL,
-            body=json.dumps(body),
+            json=body,
             headers=headers,
             timeout=EXTERNAL_API_TIMEOUT,
         )
