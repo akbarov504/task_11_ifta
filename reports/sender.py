@@ -8,7 +8,7 @@ from settings import (
     EXTERNAL_API_TIMEOUT,
 )
 from utils.database import db_cursor
-from utils.token_manager import get_valid_token
+from utils.token_manager import get_shared_token
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def send_to_external(report: dict, report_id: int) -> bool:
         return False
 
     try:
-        token = get_valid_token()
+        token = get_shared_token()
     except Exception as exc:
         logger.error("Report #%d — token olishda xato: %s", report_id, exc)
         return False
