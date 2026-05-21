@@ -40,7 +40,6 @@ def _poll_once():
     row = {
         "ts": now,
 
-        # GPS
         "latitude":      _safe_float(gps.get("latitude")),
         "longitude":     _safe_float(gps.get("longitude")),
         "gps_speed_mph": _safe_float(gps.get("speed_mph")),
@@ -49,7 +48,6 @@ def _poll_once():
         "state":         gps.get("state"),
         "state_code":    gps.get("state_code"),
 
-        # CAN
         "vehicle_speed":  _safe_float(can.get("vehicle_speed")),
         "engine_speed":   _safe_float(can.get("engine_speed")),
         "wheel_speed":    _safe_float(can.get("wheel_based_speed")),

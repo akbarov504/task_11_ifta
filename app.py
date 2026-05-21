@@ -9,7 +9,6 @@ import scheduler.runner   as scheduler
 from api.routes       import run_api
 from settings         import LOG_LEVEL, LOG_FILE
 
-
 def _setup_logging():
     fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     handlers = [
@@ -19,9 +18,7 @@ def _setup_logging():
     logging.basicConfig(level=getattr(logging, LOG_LEVEL, "INFO"),
                         format=fmt, handlers=handlers)
 
-
 _shutdown = threading.Event()
-
 
 def _handle_signal(sig, frame):
     logging.getLogger("main").info("Signal %s received — shutting down...", sig)
@@ -29,7 +26,6 @@ def _handle_signal(sig, frame):
     scheduler.stop()
     _shutdown.set()
     sys.exit(0)
-
 
 if __name__ == "__main__":
     _setup_logging()
@@ -42,7 +38,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, _handle_signal)
 
     poller.start()
-    scheduler.start()   # interval + day-end, ikkala thread ham daemon
+    scheduler.start()
 
     log.info("Starting API server...")
     try:

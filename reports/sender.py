@@ -12,10 +12,8 @@ from utils.token_manager import get_shared_token
 
 logger = logging.getLogger(__name__)
 
-
 def save_report(report: dict, period_type: str,
                 period_start: float, period_end: float) -> int:
-    """To'liq reportni (meta+current_status+summary+states) DB ga saqlaydi."""
     payload = json.dumps(report, ensure_ascii=False)
     with db_cursor() as cur:
         cur.execute("""
@@ -25,13 +23,7 @@ def save_report(report: dict, period_type: str,
         """, (time.time(), period_type, period_start, period_end, payload))
         return cur.lastrowid
 
-
 def send_to_external(report: dict, report_id: int) -> bool:
-    """
-    External logistika API ga yuboradi.
-    Faqat 'daily' period_type yuboriladi.
-    Body: { summary, states }
-    """
     if report["meta"]["period_type"] != "daily":
         return False
 
@@ -83,7 +75,6 @@ def send_to_external(report: dict, report_id: int) -> bool:
     logger.info("Report #%d yuborildi — HTTP %d", report_id, resp.status_code)
     return True
 
-
 def retry_unsent():
     """Yuborib bo'lmaganlarni qayta urinadi."""
     with db_cursor() as cur:
@@ -103,7 +94,6 @@ def retry_unsent():
             logger.error("Report #%d — DB dagi payload noto'g'ri JSON: %s", row["id"], exc)
             continue
         send_to_external(report, row["id"])
-
 
 def _mark_sent(report_id: int):
     with db_cursor() as cur:

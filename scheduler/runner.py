@@ -1,8 +1,4 @@
 """
-ifta/scheduler/runner.py
-
-Ikkita parallel scheduler:
-
 1. INTERVAL SCHEDULER — har REPORT_SEND_INTERVAL_HOURS soatda report yuboradi.
    Har tsikl FAQAT o'sha intervalning oralig'ini hisoblaydi (window-based):
      - 1-tsikl: start → start+1h   (masalan 10:00→11:00)
@@ -11,8 +7,6 @@ Ikkita parallel scheduler:
 
 2. DAY-END SCHEDULER — har kuni UTC 23:59:59 da "daily closing" report yuboradi.
    Bu shu UTC kunning 00:00:00 → 23:59:59 ni qamrab oladi (to'liq kun).
-
-MUHIM: Barcha vaqt hisoblari UTC da.
 """
 
 import time
@@ -31,16 +25,11 @@ logger = logging.getLogger(__name__)
 
 _stop_event = threading.Event()
 
-
-# ── UTC yordamchi funksiyalar ─────────────────────────────────
-
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
-
 def _now_ts() -> float:
     return time.time()
-
 
 def _today_utc_start_end() -> tuple[float, float]:
     """Bugungi UTC 00:00:00 → 23:59:59 Unix timestamp."""
@@ -48,7 +37,6 @@ def _today_utc_start_end() -> tuple[float, float]:
     start = now.replace(hour=0,  minute=0,  second=0,  microsecond=0)
     end   = now.replace(hour=23, minute=59, second=59, microsecond=0)
     return start.timestamp(), end.timestamp()
-
 
 def _seconds_until_utc_eod() -> float:
     """Bugungi UTC 23:59:59 ga qancha soniya qolgan."""
@@ -60,15 +48,7 @@ def _seconds_until_utc_eod() -> float:
         diff = (eod - now).total_seconds()
     return diff
 
-
-# ── Interval scheduler ────────────────────────────────────────
-
 def _run_interval_cycle(window_start: float, window_end: float):
-    """
-    Faqat window_start → window_end oralig'idagi telemetriyadan report yaratadi.
-    Masalan: 10:00 UTC → 11:00 UTC — faqat shu 1 soatlik ma'lumot.
-    Avvalgi intervallar ARALASHMAYDI.
-    """
     retry_unsent()
 
     utc_str = _utc_now().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -89,12 +69,11 @@ def _run_interval_cycle(window_start: float, window_end: float):
         except Exception:
             logger.exception("Interval error for period_type=%s", period_type)
 
-
 def interval_loop():
     interval_sec = REPORT_SEND_INTERVAL_HOURS * 3600
     logger.info("Interval scheduler started (every %.1fh)", REPORT_SEND_INTERVAL_HOURS)
 
-    window_start = _now_ts()   # App ishga tushgan vaqt
+    window_start = _now_ts()
 
     while not _stop_event.is_set():
         _stop_event.wait(interval_sec)
@@ -103,15 +82,11 @@ def interval_loop():
 
         window_end   = _now_ts()
         _run_interval_cycle(window_start, window_end)
-        window_start = window_end   # Keyingi tsikl shu yerdan boshlanadi
+        window_start = window_end
 
     logger.info("Interval scheduler stopped")
 
-
-# ── Kun yakunlash scheduler ───────────────────────────────────
-
 def _run_day_end_cycle():
-    """UTC bugungi 00:00:00 → 23:59:59 oralig'idagi to'liq daily closing report."""
     start_ts, end_ts = _today_utc_start_end()
     utc_str = _utc_now().strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -128,7 +103,6 @@ def _run_day_end_cycle():
     except Exception:
         logger.exception("Day-end report error at UTC=%s", utc_str)
 
-
 def day_end_loop():
     """Har kuni UTC 23:59:59 da bir marta daily closing report yuboradi."""
     logger.info("Day-end scheduler started (fires at UTC 23:59:59 daily)")
@@ -144,12 +118,9 @@ def day_end_loop():
             break
 
         _run_day_end_cycle()
-        _stop_event.wait(1)   # 23:59:59 → 00:00:00 o'tib ketmasligi uchun
+        _stop_event.wait(1)
 
     logger.info("Day-end scheduler stopped")
-
-
-# ── Public API ────────────────────────────────────────────────
 
 def start() -> list[threading.Thread]:
     _stop_event.clear()
@@ -158,7 +129,6 @@ def start() -> list[threading.Thread]:
     t1.start()
     t2.start()
     return [t1, t2]
-
 
 def stop():
     _stop_event.set()

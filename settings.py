@@ -7,7 +7,6 @@ POLL_INTERVAL_SECONDS = 5
 # Har necha soatda report yaratib external API ga yuboriladi
 REPORT_SEND_INTERVAL_HOURS = 1
 
-# Qaysi report turlari avtomatik yuboriladir
 AUTO_REPORT_TYPES = ["daily", "weekly", "monthly"]
 
 EXTERNAL_REPORT_API_URL = "https://dev-gw.tracksafe365.com/services/glssafety/api/ifta/report"

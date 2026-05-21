@@ -1,13 +1,4 @@
 """
-ifta/reports/builder.py
-
-MUHIM — Vaqt haqida:
-  - Barcha hisob-kitob va DB da UTC Unix timestamp ishlatiladi
-  - date.today() ISHLATILMAYDI — u serverdagi local vaqtni qaytaradi
-  - Buning o'rniga datetime.now(timezone.utc).date() ishlatiladi
-  - _unix_to_iso() "Z" suffix bilan ISO 8601 UTC string qaytaradi
-    masalan: "2026-05-20T14:30:00Z"
-
 External API body formati:
 {
   "summary": {
@@ -39,18 +30,15 @@ logger = logging.getLogger(__name__)
 
 SPEED_THRESHOLD_MPH = 1.0
 
-
 def _unix_to_iso(ts: float | None) -> str | None:
     """Unix timestamp → ISO 8601 UTC string, "Z" suffix bilan."""
     if ts is None:
         return None
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-
 def _utc_today():
     """UTC bo'yicha bugungi sana (date object). date.today() emas!"""
     return datetime.now(timezone.utc).date()
-
 
 def _period_bounds(period_type: str) -> tuple[float, float]:
     """
@@ -58,7 +46,7 @@ def _period_bounds(period_type: str) -> tuple[float, float]:
     Hamma narsa UTC — local vaqt ishlatilmaydi.
     """
     now   = time.time()
-    today = _utc_today()   # UTC sana
+    today = _utc_today()
 
     if period_type == "daily":
         start_date = today
@@ -77,9 +65,8 @@ def _period_bounds(period_type: str) -> tuple[float, float]:
         return datetime(d.year, d.month, d.day, 0, 0, 0,
                         tzinfo=timezone.utc).timestamp()
 
-    end_unix = to_unix(end_date) + 86400 - 1   # shu kunning 23:59:59 UTC
+    end_unix = to_unix(end_date) + 86400 - 1
     return to_unix(start_date), min(end_unix, now)
-
 
 def _fetch_rows(start_ts: float, end_ts: float) -> list[dict]:
     conn = get_connection()
@@ -98,7 +85,6 @@ def _fetch_rows(start_ts: float, end_ts: float) -> list[dict]:
     finally:
         conn.close()
 
-
 def _fetch_latest() -> dict | None:
     conn = get_connection()
     try:
@@ -116,7 +102,6 @@ def _fetch_latest() -> dict | None:
     finally:
         conn.close()
 
-
 def _determine_status(row: dict) -> str:
     if not row:
         return "unknown"
@@ -128,7 +113,6 @@ def _determine_status(row: dict) -> str:
         return "moving"
     return "idle"
 
-
 def _build_state_segments(rows: list[dict]) -> list[dict]:
     """
     Telemetriya qatorlaridan shtat bo'yicha segmentlar.
@@ -139,7 +123,7 @@ def _build_state_segments(rows: list[dict]) -> list[dict]:
 
     segments  = []
     cur_state = rows[0].get("state_code") or "UNKNOWN"
-    seg_start = rows[0]["ts"]           # UTC Unix timestamp
+    seg_start = rows[0]["ts"]
     seg_miles = 0.0
     seg_drive = 0.0
     seg_idle  = 0.0
@@ -181,7 +165,6 @@ def _build_state_segments(rows: list[dict]) -> list[dict]:
         prev_row = row
         prev_odo = odo
 
-    # Oxirgi segment
     segments.append({
         "state":            cur_state,
         "stateFullName":    prev_row.get("state") or cur_state,
@@ -194,16 +177,9 @@ def _build_state_segments(rows: list[dict]) -> list[dict]:
 
     return segments
 
-
 def build_report(period_type: str,
                  custom_start: float | None = None,
                  custom_end:   float | None = None) -> dict:
-    """
-    To'liq ichki report (meta + current_status + summary + states).
-    Barcha vaqtlar UTC "Z" suffix bilan.
-
-    custom_start/end: kun yakunlash reporti uchun (runner.py dan beriladi)
-    """
     if custom_start is not None and custom_end is not None:
         start_ts, end_ts = custom_start, custom_end
     else:
@@ -230,15 +206,15 @@ def build_report(period_type: str,
             "odometer_miles": latest.get("total_distance"),
             "engine_hours":   latest.get("engine_hours"),
             "vin":            latest.get("vin"),
-            "as_of":          _unix_to_iso(latest.get("ts")),  # UTC "Z"
+            "as_of":          _unix_to_iso(latest.get("ts")),
         }
 
     report = {
         "meta": {
             "period_type":  period_type,
-            "period_start": _unix_to_iso(start_ts),         # UTC "Z"
-            "period_end":   _unix_to_iso(end_ts),           # UTC "Z"
-            "generated_at": _unix_to_iso(time.time()),      # UTC "Z"
+            "period_start": _unix_to_iso(start_ts),
+            "period_end":   _unix_to_iso(end_ts),
+            "generated_at": _unix_to_iso(time.time()),
             "data_points":  len(rows),
         },
         "current_status": current,
